@@ -1,0 +1,43 @@
+[Job_info]
+  mission = "TWPA_tuneUp"
+  sample = "Test"
+
+[Hardware]
+  [Hardware.SA]
+    model = "N9020B"
+    address = '192.168.1.20'
+  [Hardware.ROSG]
+    model = "SGS100A"
+    address = '192.168.1.16'
+  [Hardware.PPSG]
+    model = "SGS100A"
+    address = '192.168.1.14'
+
+
+[Readout]
+  output = "/home/ratiswu/FastTU_TWPAv3"
+  [Readout.a]
+    label = "Ro1"
+    RO_freq = 6.1e9
+    span_freq = 10e6
+    res_band = 1e6
+    power = -40
+    repeat = 3
+    
+  [Readout.b]
+    label = "Ro2"
+    RO_freq = 6e9
+    span_freq = 10e6
+    res_band = 1e6
+    power = -40
+    repeat = 3
+
+[Pumping]
+  [Pumping.frequency]
+      start = 6.5e9
+      stop = 6.8e9
+      points = 90
+  [Pumping.power]
+      start = -7
+      stop = -13
+      points = 12

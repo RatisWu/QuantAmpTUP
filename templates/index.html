@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>實驗管理系統</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>實驗管理系統</header>
+  <main>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <h3>上傳 TOML 檔案</h3>
+      <input type="file" name="toml_file" accept=".toml" required>
+      <input type="submit" value="上傳並執行">
+    </form>
+
+    <h3>儀器佔用狀態</h3>
+    <table id="instrument-table">
+      <thead>
+        <tr>
+          <th>儀器名稱</th>
+          <th>IP</th>
+          <th>使用者</th>
+          <th>時間</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- AJAX 填充 -->
+      </tbody>
+    </table>
+
+    <h3>下載實驗結果</h3>
+    <button onclick="window.location.href='/download/sample_experiment_id'">下載 ZIP</button>
+  </main>
+
+  <script>
+    // 每 20 秒刷新儀器狀態
+    async function refreshStatus() {
+      const response = await fetch('/status');
+      const data = await response.json();
+      const tbody = document.querySelector('#instrument-table tbody');
+      tbody.innerHTML = '';
+      data.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${item.instrument_name}</td>
+                         <td>${item.ip_address}</td>
+                         <td>${item.username}</td>
+                         <td>${item.occupied_at}</td>`;
+        tbody.appendChild(row);
+      });
+    }
+    setInterval(refreshStatus, 20000); // 20 秒
+    refreshStatus(); // 初始載入
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>註冊</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h2>註冊帳號</h2>
+    <form method="POST">
+      <input type="text" name="username" placeholder="使用者名稱" required>
+      <input type="password" name="password" placeholder="密碼" required>
+      <input type="submit" value="註冊">
+    </form>
+    <div class="message">
+      已經有帳號了？ <a href="/login">登入</a>
+    </div>
+  </div>
+</body>
+</html>
