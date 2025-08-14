@@ -9,6 +9,11 @@
 <body>
   <header>實驗管理系統</header>
   <main>
+    <!-- Logout Button -->
+    <form action="{{ url_for('logout') }}" method="get" style="display:inline-block;">
+        <button type="submit">Logout</button>
+    </form>
+    
     <form action="/upload" method="post" enctype="multipart/form-data">
       <h3>上傳 TOML 檔案</h3>
       <input type="file" name="toml_file" accept=".toml" required>
@@ -30,8 +35,13 @@
       </tbody>
     </table>
 
-    <h3>下載實驗結果</h3>
-    <button onclick="window.location.href='/download/sample_experiment_id'">下載 ZIP</button>
+    
+    <h3>下載最新實驗結果</h3>
+    {% if latest_exp %}
+        <button onclick="downloadExp('{{ latest_exp.id }}')">下載 ZIP</button>
+    {% else %}
+        <p>沒有實驗結果可下載</p>
+    {% endif %}
   </main>
 
   <script>
@@ -52,6 +62,30 @@
     }
     setInterval(refreshStatus, 20000); // 20 秒
     refreshStatus(); // 初始載入
+    function downloadExp(exp_id) {
+        fetch(`/download_ajax/${exp_id}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert("Error: " + data.error);
+            } else {
+                // trigger download
+                const a = document.createElement('a');
+                a.href = '/download_file?file=' + encodeURIComponent(data.zip_path);
+                a.download = data.filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Download failed");
+        });
+    }
   </script>
 </body>
 </html>
+

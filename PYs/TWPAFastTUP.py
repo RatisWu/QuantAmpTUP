@@ -12,7 +12,7 @@ def main():
     toml_path = sys.argv[1]
     print(f"收到 TOML 檔案: {toml_path}")
 
-    # path = TWPA_fastTup(toml_path)
+    path = TWPA_fastTup(toml_path)
 
 
 if __name__ == "__main__":

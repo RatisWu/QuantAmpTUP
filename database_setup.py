@@ -2,9 +2,9 @@ import pymysql
 
 # MySQL 連線設定
 MYSQL_HOST = 'localhost'
-MYSQL_USER = 'RatisWu'      # 修改成你的 MySQL 使用者
-MYSQL_PASSWORD = 'sherlock0301'  # 修改成你的密碼
-DB_NAME = 'uqms_db'
+MYSQL_USER = 'QuantAmpTUP'      # 修改成你的 MySQL 使用者
+MYSQL_PASSWORD = 'CCDismyBOSS'  # 修改成你的密碼
+DB_NAME = 'QuantAmpTUP'
 
 # 建立連線
 conn = pymysql.connect(
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS instruments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     instrument_name VARCHAR(50) NOT NULL,
     ip_address VARCHAR(50) NOT NULL UNIQUE,
-    user_id INT NOT NULL,
+    user_id INT NULL,
     occupied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
