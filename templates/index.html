@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>實驗管理系統</title>
+  <title>FastTWPAcalibrator</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <header>實驗管理系統</header>
+  <header>FastTWPAcalibrator</header>
   <main>
     <!-- Logout Button -->
     <form action="{{ url_for('logout') }}" method="get" style="display:inline-block;">
@@ -15,9 +15,9 @@
     </form>
     
     <form action="/upload" method="post" enctype="multipart/form-data">
-      <h3>上傳 TOML 檔案</h3>
+      <h3>Upload job request</h3>
       <input type="file" name="toml_file" accept=".toml" required>
-      <input type="submit" value="上傳並執行">
+      <input type="submit" value="Upload&Execute">
     </form>
 
     <h3>儀器佔用狀態</h3>
@@ -38,7 +38,7 @@
     
     <h3>下載最新實驗結果</h3>
     {% if latest_exp %}
-        <button onclick="downloadExp('{{ latest_exp.id }}')">下載 ZIP</button>
+        <button onclick="downloadExp('{{ latest_exp.id }}')">Download ZIP</button>
     {% else %}
         <p>沒有實驗結果可下載</p>
     {% endif %}
