@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request, redirect, session, jsonify, send_file, url_for, flash
 import pymysql
+from copy import deepcopy
+from datetime import datetime
 import os, shutil, zipfile, tempfile
-import toml
+import toml, tomlkit
 import subprocess
 import sys, threading
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,6 +16,23 @@ DB_CONFIG = dict(host='localhost', user='QuantAmpTUP', password='CCDismyBOSS', d
 
 def get_conn():
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
+
+def pre_process(toml_path:str):
+    output_folder:str = ''
+
+    # Assuming 'config.toml' is your file
+    with open(toml_path, 'r') as file:
+        content = file.read()
+        sweepLF_config = tomlkit.parse(content)
+        sample_name = sweepLF_config['Job_info']['sample']
+        output_folder = os.path.join(os.getcwd(),'experiments',f"{sample_name}_job_{datetime.now().strftime('%y%m%d_%H%M%S')}")
+        sweepLF_config['Readout']['output'] = output_folder
+        x = deepcopy(sweepLF_config)
+    
+    with open(toml_path, "w") as f: # Open in text write mode
+        f.write(tomlkit.dumps(x))
+
+    return output_folder
 
 # ------------------ 使用者系統 ------------------
 @app.route('/register', methods=['GET', 'POST'])
@@ -192,10 +211,10 @@ def upload_ajax():
     os.makedirs('experiments', exist_ok=True)
     file.save(save_path)
 
-    data = toml.load(save_path)
-    output_dir = data['Readout']['output']
+    
+    output_dir = pre_process(save_path)
     os.makedirs(output_dir, exist_ok=True)
-
+    data = toml.load(save_path)
     conn = get_conn()
     cur = conn.cursor()
 
@@ -227,7 +246,7 @@ def upload_ajax():
     exp_id = cur.lastrowid
     conn.commit()
     conn.close()
-
+    
     # Run experiment in background
     def run_experiment():
         subprocess.run([sys.executable, '/home/ratiswu/Documents/GitHub/QuantAmpTUP/PYs/TWPAFastTUP.py', save_path])
