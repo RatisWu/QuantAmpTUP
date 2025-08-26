@@ -15,7 +15,7 @@
 
 
 [Readout]
-  output = "/home/ratiswu/test/BypassALL"
+
   [Readout.a]
     label = "Ro1"
     RO_freq = 5.8e9
