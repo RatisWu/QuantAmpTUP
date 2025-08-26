@@ -5,6 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FastTWPAcalibrator</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+        /* Add this inside head, after your other styles */
+        #spinner {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #downloadBtn {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
   <header>FastTWPAcalibrator</header>
@@ -14,37 +39,94 @@
         <button type="submit">Logout</button>
     </form>
     
-    <form action="/upload" method="post" enctype="multipart/form-data">
+    <form id="uploadForm" enctype="multipart/form-data">
       <h3>Upload job request</h3>
       <input type="file" name="toml_file" accept=".toml" required>
-      <input type="submit" value="Upload&Execute">
+      <button id="uploadBtn" type="submit" style="background-color: #ffcc00; color: black;">Upload&Execute</button>
     </form>
 
-    <h3>儀器佔用狀態</h3>
+    <div id="spinner">
+      <div class="loader"></div>
+      <p>Processing...</p>
+    </div>
+
+    <h3>Occupied Instruments (Developing ...)</h3>
     <table id="instrument-table">
       <thead>
         <tr>
-          <th>儀器名稱</th>
+          <th>Name</th>
           <th>IP</th>
-          <th>使用者</th>
-          <th>時間</th>
+          <th>User</th>
+          <th>Time</th>
         </tr>
       </thead>
       <tbody>
         <!-- AJAX 填充 -->
       </tbody>
     </table>
-
-    
-    <h3>下載最新實驗結果</h3>
-    {% if latest_exp %}
-        <button onclick="downloadExp('{{ latest_exp.id }}')">Download ZIP</button>
-    {% else %}
-        <p>沒有實驗結果可下載</p>
-    {% endif %}
+  
   </main>
 
   <script>
+      document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const uploadBtn = document.getElementById('uploadBtn');
+        const formData = new FormData(this);
+
+        // Disable button and show spinner
+        uploadBtn.disabled = true;
+        uploadBtn.style.backgroundColor = '#95a5a6'; // gray while processing
+        document.getElementById('spinner').style.display = 'block';
+
+        // Start upload
+        const response = await fetch("{{ url_for('upload_ajax') }}", {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        if (data.error) {
+          alert(data.error);
+          uploadBtn.disabled = false;
+          uploadBtn.style.backgroundColor = '#3498db';
+          document.getElementById('spinner').style.display = 'none';
+          return;
+        }
+
+        const expId = data.exp_id;
+
+        // Poll every 3 seconds until experiment is done
+        const interval = setInterval(async () => {
+          const statusResp = await fetch(`/api/exp_status/${expId}`);
+          const statusData = await statusResp.json();
+          if (statusData.status === 'done') {
+            clearInterval(interval);
+            document.getElementById('spinner').style.display = 'none';
+
+            // Transform the button
+            uploadBtn.textContent = 'Download ZIP';
+            uploadBtn.style.backgroundColor = '#2ecc71'; // green
+            uploadBtn.disabled = false;
+
+            // Change click behavior to download ZIP
+            uploadBtn.onclick = async (event) => {
+                event.preventDefault();
+                const resp = await fetch(`/download_ajax/${expId}`, { method: 'POST' });
+                const data = await resp.json();
+                if (data.error) {
+                    alert("Download failed: " + data.error);
+                    return;
+                }
+                const a = document.createElement('a');
+                a.href = '/download_file?file=' + encodeURIComponent(data.zip_path);
+                a.download = data.filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            };
+          }
+        }, 3000);
+      });
     // 每 20 秒刷新儀器狀態
     async function refreshStatus() {
       const response = await fetch('/status');
@@ -62,29 +144,7 @@
     }
     setInterval(refreshStatus, 20000); // 20 秒
     refreshStatus(); // 初始載入
-    function downloadExp(exp_id) {
-        fetch(`/download_ajax/${exp_id}`, {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert("Error: " + data.error);
-            } else {
-                // trigger download
-                const a = document.createElement('a');
-                a.href = '/download_file?file=' + encodeURIComponent(data.zip_path);
-                a.download = data.filename;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Download failed");
-        });
-    }
+  
   </script>
 </body>
 </html>

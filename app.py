@@ -179,7 +179,85 @@ def upload():
     conn.close()
     return redirect('/')
 
+@app.route('/upload_ajax', methods=['POST'])
+def upload_ajax():
+    if 'user_id' not in session:
+        return jsonify({'error': 'not logged in'}), 401
 
+    file = request.files.get('toml_file')
+    if not file:
+        return jsonify({'error': 'no file'}), 400
+
+    save_path = os.path.join('experiments', file.filename)
+    os.makedirs('experiments', exist_ok=True)
+    file.save(save_path)
+
+    data = toml.load(save_path)
+    output_dir = data['Readout']['output']
+    os.makedirs(output_dir, exist_ok=True)
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # Lock instruments (same logic as before)
+    instrument_ids = []
+    for hw_name, hw in data['Hardware'].items():
+        ip = hw['address']
+        cur.execute("SELECT * FROM instruments WHERE ip_address=%s", (ip,))
+        existing = cur.fetchone()
+        if existing:
+            if existing['user_id'] is not None:
+                conn.close()
+                return jsonify({'error': f"{hw_name}:{ip} 已被佔用"}), 400
+            cur.execute("UPDATE instruments SET user_id=%s WHERE id=%s", (session['user_id'], existing['id']))
+            instrument_ids.append(existing['id'])
+        else:
+            cur.execute(
+                "INSERT INTO instruments (instrument_name, ip_address, user_id) VALUES (%s,%s,%s)",
+                (hw_name, ip, session['user_id'])
+            )
+            instrument_ids.append(cur.lastrowid)
+    conn.commit()
+
+    # Record experiment with status 'running'
+    cur.execute(
+        "INSERT INTO experiments (user_id, output_path, toml_path, status) VALUES (%s,%s,%s,%s)",
+        (session['user_id'], output_dir, save_path, 'running')
+    )
+    exp_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+
+    # Run experiment in background
+    def run_experiment():
+        subprocess.run([sys.executable, '/home/ratiswu/Documents/GitHub/QuantAmpTUP/PYs/TWPAFastTUP.py', save_path])
+        # Update status to 'done' and release instruments
+        conn2 = get_conn()
+        cur2 = conn2.cursor()
+        cur2.execute("UPDATE experiments SET status='done' WHERE id=%s", (exp_id,))
+        if instrument_ids:
+            cur2.execute(
+                "UPDATE instruments SET user_id=NULL WHERE id IN (%s)" % ",".join(["%s"]*len(instrument_ids)),
+                instrument_ids
+            )
+        conn2.commit()
+        conn2.close()
+
+    threading.Thread(target=run_experiment).start()
+    return jsonify({'exp_id': exp_id})
+
+@app.route('/api/exp_status/<int:exp_id>')
+def exp_status(exp_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'not logged in'}), 401
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT status FROM experiments WHERE id=%s AND user_id=%s", (exp_id, session['user_id']))
+    exp = cur.fetchone()
+    conn.close()
+    if not exp:
+        return jsonify({'error':'not found'}), 404
+    return jsonify({'status': exp['status']})
 
 @app.route('/download_ajax/<int:exp_id>', methods=['POST'])
 def download_ajax(exp_id):
