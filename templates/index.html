@@ -86,9 +86,9 @@
         });
         const data = await response.json();
         if (data.error) {
-          alert(data.error);
+          alert("Error: " + data.error);   // simple popup
           uploadBtn.disabled = false;
-          uploadBtn.style.backgroundColor = '#3498db';
+          uploadBtn.style.backgroundColor = '#FF0000';
           document.getElementById('spinner').style.display = 'none';
           return;
         }

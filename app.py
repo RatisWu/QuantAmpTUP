@@ -122,148 +122,152 @@ def api_status():
         'experiments': experiments
     })
 # ------------------ 上傳 TOML 並執行 ------------------
-@app.route('/upload', methods=['POST'])
-def upload():
-    if 'user_id' not in session:
-        return redirect('/login')
+# @app.route('/upload', methods=['POST'])
+# def upload():
+#     if 'user_id' not in session:
+#         return redirect('/login')
 
-    # 取得檔案
-    file = request.files.get('toml_file')
-    if not file:
-        return "沒有檔案"
+#     # 取得檔案
+#     file = request.files.get('toml_file')
+#     if not file:
+#         return "沒有檔案"
 
-    save_path = os.path.join('experiments', file.filename)
-    os.makedirs('experiments', exist_ok=True)
-    file.save(save_path)
+#     save_path = os.path.join('experiments', file.filename)
+#     os.makedirs('experiments', exist_ok=True)
+#     file.save(save_path)
 
-    # 解析 TOML
-    data = toml.load(save_path)
-    output_dir = data['Readout']['output']
-    os.makedirs(output_dir, exist_ok=True)
+#     # 解析 TOML
+#     data = toml.load(save_path)
+#     output_dir = data['Readout']['output']
+#     os.makedirs(output_dir, exist_ok=True)
 
-    # 鎖定儀器
-    conn = get_conn()
-    cur = conn.cursor()
-    instrument_ids = []
-    for hw_name, hw in data['Hardware'].items():
-        name = hw_name
-        ip = hw['address']
-        cur.execute("SELECT * FROM instruments WHERE ip_address=%s", (ip,))
-        existing = cur.fetchone()
-        if existing:
-            if existing['user_id'] is not None:
-                conn.close()
-                return f"{name}:{ip} 已被佔用"
-            cur.execute("UPDATE instruments SET user_id=%s WHERE id=%s", (session['user_id'], existing['id']))
-            instrument_ids.append(existing['id'])
-        else:
-            cur.execute(
-                "INSERT INTO instruments (instrument_name, ip_address, user_id) VALUES (%s,%s,%s)",
-                (name, ip, session['user_id'])
-            )
-            instrument_ids.append(cur.lastrowid)
-    conn.commit()
+#     # 鎖定儀器
+#     conn = get_conn()
+#     cur = conn.cursor()
+#     instrument_ids = []
+#     for hw_name, hw in data['Hardware'].items():
+#         name = hw_name
+#         ip = hw['address']
+#         cur.execute("SELECT * FROM instruments WHERE ip_address=%s", (ip,))
+#         existing = cur.fetchone()
+#         if existing:
+#             if existing['user_id'] is not None:
+#                 conn.close()
+#                 return f"{name}:{ip} 已被佔用"
+#             cur.execute("UPDATE instruments SET user_id=%s WHERE id=%s", (session['user_id'], existing['id']))
+#             instrument_ids.append(existing['id'])
+#         else:
+#             cur.execute(
+#                 "INSERT INTO instruments (instrument_name, ip_address, user_id) VALUES (%s,%s,%s)",
+#                 (name, ip, session['user_id'])
+#             )
+#             instrument_ids.append(cur.lastrowid)
+#     conn.commit()
 
-    # 記錄實驗 (加入 toml_path)
-    cur.execute(
-        "INSERT INTO experiments (user_id, output_path, toml_path) VALUES (%s, %s, %s)",
-        (session['user_id'], output_dir, save_path)
-    )
-    exp_id = cur.lastrowid
-    conn.commit()
+#     # 記錄實驗 (加入 toml_path)
+#     cur.execute(
+#         "INSERT INTO experiments (user_id, output_path, toml_path) VALUES (%s, %s, %s)",
+#         (session['user_id'], output_dir, save_path)
+#     )
+#     exp_id = cur.lastrowid
+#     conn.commit()
 
-    # 執行 Python 檔案，並在完成後釋放儀器
-    python_exec = sys.executable
-    script_path = '/home/ratiswu/Documents/GitHub/QuantAmpTUP/PYs/TWPAFastTUP.py'
+#     # 執行 Python 檔案，並在完成後釋放儀器
+#     python_exec = sys.executable
+#     script_path = '/home/ratiswu/Documents/GitHub/QuantAmpTUP/PYs/TWPAFastTUP.py'
 
-    def release_instruments(ids):
-        conn2 = get_conn()
-        cur2 = conn2.cursor()
-        cur2.execute(
-            "UPDATE instruments SET user_id=NULL WHERE id IN (%s)" % ",".join(["%s"]*len(ids)),
-            ids
-        )
-        conn2.commit()
-        conn2.close()
+#     def release_instruments(ids):
+#         conn2 = get_conn()
+#         cur2 = conn2.cursor()
+#         cur2.execute(
+#             "UPDATE instruments SET user_id=NULL WHERE id IN (%s)" % ",".join(["%s"]*len(ids)),
+#             ids
+#         )
+#         conn2.commit()
+#         conn2.close()
 
-    def run_experiment():
-        subprocess.run([python_exec, script_path, save_path])
-        release_instruments(instrument_ids)
+#     def run_experiment():
+#         subprocess.run([python_exec, script_path, save_path])
+#         release_instruments(instrument_ids)
 
-    import threading
-    threading.Thread(target=run_experiment).start()
+#     import threading
+#     threading.Thread(target=run_experiment).start()
 
-    # os.remove(save_path)
+#     # os.remove(save_path)
 
-    conn.close()
-    return redirect('/')
+#     conn.close()
+#     return redirect('/')
 
 @app.route('/upload_ajax', methods=['POST'])
 def upload_ajax():
     if 'user_id' not in session:
         return jsonify({'error': 'not logged in'}), 401
 
-    file = request.files.get('toml_file')
-    if not file:
-        return jsonify({'error': 'no file'}), 400
+    try:
+        file = request.files.get('toml_file')
+        if not file:
+            return jsonify({'error': 'no file'}), 400
 
-    save_path = os.path.join('experiments', file.filename)
-    os.makedirs('experiments', exist_ok=True)
-    file.save(save_path)
+        save_path = os.path.join('experiments', file.filename)
+        os.makedirs('experiments', exist_ok=True)
+        file.save(save_path)
 
-    
-    output_dir = pre_process(save_path)
-    os.makedirs(output_dir, exist_ok=True)
-    data = toml.load(save_path)
-    conn = get_conn()
-    cur = conn.cursor()
+        
+        output_dir = pre_process(save_path)
+        os.makedirs(output_dir, exist_ok=True)
+        data = toml.load(save_path)
+        conn = get_conn()
+        cur = conn.cursor()
 
-    # Lock instruments (same logic as before)
-    instrument_ids = []
-    for hw_name, hw in data['Hardware'].items():
-        ip = hw['address']
-        cur.execute("SELECT * FROM instruments WHERE ip_address=%s", (ip,))
-        existing = cur.fetchone()
-        if existing:
-            if existing['user_id'] is not None:
-                conn.close()
-                return jsonify({'error': f"{hw_name}:{ip} 已被佔用"}), 400
-            cur.execute("UPDATE instruments SET user_id=%s WHERE id=%s", (session['user_id'], existing['id']))
-            instrument_ids.append(existing['id'])
-        else:
-            cur.execute(
-                "INSERT INTO instruments (instrument_name, ip_address, user_id) VALUES (%s,%s,%s)",
-                (hw_name, ip, session['user_id'])
-            )
-            instrument_ids.append(cur.lastrowid)
-    conn.commit()
+        # Lock instruments (same logic as before)
+        instrument_ids = []
+        for hw_name, hw in data['Hardware'].items():
+            ip = hw['address']
+            cur.execute("SELECT * FROM instruments WHERE ip_address=%s", (ip,))
+            existing = cur.fetchone()
+            if existing:
+                if existing['user_id'] is not None:
+                    conn.close()
+                    return jsonify({'error': f"{hw_name}:{ip} 已被佔用"}), 400
+                cur.execute("UPDATE instruments SET user_id=%s WHERE id=%s", (session['user_id'], existing['id']))
+                instrument_ids.append(existing['id'])
+            else:
+                cur.execute(
+                    "INSERT INTO instruments (instrument_name, ip_address, user_id) VALUES (%s,%s,%s)",
+                    (hw_name, ip, session['user_id'])
+                )
+                instrument_ids.append(cur.lastrowid)
+        conn.commit()
 
-    # Record experiment with status 'running'
-    cur.execute(
-        "INSERT INTO experiments (user_id, output_path, toml_path, status) VALUES (%s,%s,%s,%s)",
-        (session['user_id'], output_dir, save_path, 'running')
-    )
-    exp_id = cur.lastrowid
-    conn.commit()
-    conn.close()
-    
-    # Run experiment in background
-    def run_experiment():
-        subprocess.run([sys.executable, '/home/ratiswu/Documents/GitHub/QuantAmpTUP/PYs/TWPAFastTUP.py', save_path])
-        # Update status to 'done' and release instruments
-        conn2 = get_conn()
-        cur2 = conn2.cursor()
-        cur2.execute("UPDATE experiments SET status='done' WHERE id=%s", (exp_id,))
-        if instrument_ids:
-            cur2.execute(
-                "UPDATE instruments SET user_id=NULL WHERE id IN (%s)" % ",".join(["%s"]*len(instrument_ids)),
-                instrument_ids
-            )
-        conn2.commit()
-        conn2.close()
+        # Record experiment with status 'running'
+        cur.execute(
+            "INSERT INTO experiments (user_id, output_path, toml_path, status) VALUES (%s,%s,%s,%s)",
+            (session['user_id'], output_dir, save_path, 'running')
+        )
+        exp_id = cur.lastrowid
+        conn.commit()
+        conn.close()
+        
+        # Run experiment in background
+        def run_experiment():
+            subprocess.run([sys.executable, '/home/ratiswu/Documents/GitHub/QuantAmpTUP/PYs/TWPAFastTUP.py', save_path])
+            # Update status to 'done' and release instruments
+            conn2 = get_conn()
+            cur2 = conn2.cursor()
+            cur2.execute("UPDATE experiments SET status='done' WHERE id=%s", (exp_id,))
+            if instrument_ids:
+                cur2.execute(
+                    "UPDATE instruments SET user_id=NULL WHERE id IN (%s)" % ",".join(["%s"]*len(instrument_ids)),
+                    instrument_ids
+                )
+            conn2.commit()
+            conn2.close()
 
-    threading.Thread(target=run_experiment).start()
-    return jsonify({'exp_id': exp_id})
+        threading.Thread(target=run_experiment).start()
+        return jsonify({'exp_id': exp_id})
+    except Exception as e:
+        # Catch any other error and return it to frontend
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/exp_status/<int:exp_id>')
 def exp_status(exp_id):
