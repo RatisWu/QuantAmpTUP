@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FastTWPAcalibrator</title>
+  <title>TWPA Calibrator</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
         /* Add this inside head, after your other styles */
@@ -32,7 +32,7 @@
     </style>
 </head>
 <body>
-  <header>FastTWPAcalibrator</header>
+  <header>TWPA Calibrator</header>
   <main>
     <!-- Logout Button -->
     <form action="{{ url_for('logout') }}" method="get" style="display:inline-block;">
@@ -42,7 +42,7 @@
     <form id="uploadForm" enctype="multipart/form-data">
       <h3>Upload job request</h3>
       <input type="file" name="toml_file" accept=".toml" required>
-      <button id="uploadBtn" type="submit" style="background-color: #ffcc00; color: black;">Upload&Execute</button>
+      <button id="uploadBtn" type="submit" style="background-color: #ffcc00; color: black; font-size: 20px;">Upload&Execute</button>
       <div id="errorMsg" style="color:red; margin-top:10px;"></div>
     </form>
     
