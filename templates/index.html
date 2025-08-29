@@ -43,7 +43,9 @@
       <h3>Upload job request</h3>
       <input type="file" name="toml_file" accept=".toml" required>
       <button id="uploadBtn" type="submit" style="background-color: #ffcc00; color: black;">Upload&Execute</button>
+      <div id="errorMsg" style="color:red; margin-top:10px;"></div>
     </form>
+    
 
     <div id="spinner">
       <div class="loader"></div>
@@ -86,11 +88,13 @@
         });
         const data = await response.json();
         if (data.error) {
-          alert("Error: " + data.error);   // simple popup
+          document.getElementById('errorMsg').textContent = data.error;
           uploadBtn.disabled = false;
           uploadBtn.style.backgroundColor = '#FF0000';
           document.getElementById('spinner').style.display = 'none';
           return;
+        } else {
+          document.getElementById('errorMsg').textContent = ''; // clear previous errors
         }
 
         const expId = data.exp_id;
@@ -113,10 +117,6 @@
                 event.preventDefault();
                 const resp = await fetch(`/download_ajax/${expId}`, { method: 'POST' });
                 const data = await resp.json();
-                if (data.error) {
-                    alert("Download failed: " + data.error);
-                    return;
-                }
                 const a = document.createElement('a');
                 a.href = '/download_file?file=' + encodeURIComponent(data.zip_path);
                 a.download = data.filename;
@@ -124,6 +124,15 @@
                 a.click();
                 a.remove();
             };
+          } 
+          else if (statusData.status === 'error') {
+            clearInterval(interval);
+            document.getElementById('spinner').style.display = 'none';
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = false;
+            uploadBtn.style.backgroundColor = '#e74c3c'; // red for error
+            uploadBtn.textContent = 'Error Occurred';
+            document.getElementById('errorMsg').textContent = "Experiment failed. Check server logs.";
           }
         }, 3000);
       });

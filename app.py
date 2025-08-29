@@ -250,7 +250,7 @@ def upload_ajax():
         
         # Run experiment in background
         def run_experiment():
-            subprocess.run([sys.executable, '/home/ratiswu/Documents/GitHub/QuantAmpTUP/PYs/TWPAFastTUP.py', save_path])
+            subprocess.run([sys.executable, '/home/ratiswu/Documents/GitHub/QuantAmpTUP/PYs/TWPAFastTUP.py', save_path],check=True)
             # Update status to 'done' and release instruments
             conn2 = get_conn()
             cur2 = conn2.cursor()
@@ -265,8 +265,32 @@ def upload_ajax():
 
         threading.Thread(target=run_experiment).start()
         return jsonify({'exp_id': exp_id})
+    except subprocess.CalledProcessError as e:
+        # Script exited with non-zero code
+        conn2 = get_conn()
+        cur2 = conn2.cursor()
+        cur2.execute("UPDATE experiments SET status='error' WHERE id=%s", (exp_id,))
+        if instrument_ids:
+            cur2.execute(
+                "UPDATE instruments SET user_id=NULL WHERE id IN (%s)" % ",".join(["%s"]*len(instrument_ids)),
+                instrument_ids
+            )
+        conn2.commit()
+        conn2.close()
+        return jsonify({'error': str(e)}), 500
+
     except Exception as e:
-        # Catch any other error and return it to frontend
+        # Any Python exception
+        conn2 = get_conn()
+        cur2 = conn2.cursor()
+        cur2.execute("UPDATE experiments SET status='error' WHERE id=%s", (exp_id,))
+        if instrument_ids:
+            cur2.execute(
+                "UPDATE instruments SET user_id=NULL WHERE id IN (%s)" % ",".join(["%s"]*len(instrument_ids)),
+                instrument_ids
+            )
+        conn2.commit()
+        conn2.close()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/exp_status/<int:exp_id>')
