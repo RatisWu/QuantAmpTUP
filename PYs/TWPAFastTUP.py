@@ -2,9 +2,6 @@
 import tomlkit, tomlkit
 import os, sys, shutil
 
-from LiteInstru.Worker.TWPA_FastTuneUP import TWPA_fastTup
-from LiteInstru.TWPA_ana.TWPA_FastTuneUpAna import fastTWPAcali_ana
-
 def get_m_info(toml_path:str):
     mission_type:str = ""
     output_folder:str = ""
@@ -32,8 +29,15 @@ def main():
 
     match m_type.lower():
         case "twpa_tuneup":
+            from LiteInstru.Worker.TWPA_FastTuneUP import TWPA_fastTup
+            from LiteInstru.TWPA_ana.TWPA_FastTuneUpAna import fastTWPAcali_ana
             path = TWPA_fastTup(toml_path)
             fastTWPAcali_ana(path)
+        case "twpa_gainsearch":
+            from LiteInstru.Worker.TWPA_GainSearch import TWPA_GainMap
+            from LiteInstru.TWPA_ana.TWPA_GainSearchAna import TWPA_GainSearch_ana
+            path = TWPA_GainMap(toml_path)
+            TWPA_GainSearch_ana(path)
         case _:
             raise NameError("Unsupported mission type was given !")
 
